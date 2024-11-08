@@ -7,10 +7,12 @@ def get_running_config(ip, username, password):
         # Initialize SSH client and automatically add the device's SSH key if not already known
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
+        
+        print("Establishing SSH connection to retrieve running config...")
         # Establish SSH connection to the device
         ssh.connect(ip, username=username, password=password)
-
+        print("SSH connection established.")
+        
         # Run the command to retrieve the running configuration
         stdin, stdout, stderr = ssh.exec_command("show running-config")
         
@@ -61,22 +63,17 @@ def configure_syslog(ip, username, password, syslog_server_ip):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
+        print("Establishing SSH connection to configure syslog...")
         # Establish SSH connection to the device
         ssh.connect(ip, username=username, password=password)
+        print("SSH connection established for syslog configuration.")
         
-        # Start an interactive shell session
-        shell = ssh.invoke_shell()
-
-        # Wait for the shell to be ready
-        time.sleep(1)
-
-        # Send each command with a slight delay to ensure they are executed correctly
+        # Send each command one at a time using exec_command
         for cmd in commands:
-            shell.send(cmd + "\n")
-            time.sleep(1)  # Allow some time for the command to be executed
-        
-        # Clear the buffer to avoid hanging or leftover output
-        shell.recv(1000)
+            print(f"Sending command: {cmd}")
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+            stdout.channel.recv_exit_status()  # Ensure command has finished
+            time.sleep(1)  # Add a small delay between commands to ensure they execute correctly
         
         print(f"Syslog server {syslog_server_ip} configured successfully.")
         
@@ -86,6 +83,9 @@ def configure_syslog(ip, username, password, syslog_server_ip):
         print(f"Error configuring syslog: {e}")
 
 def main():
+    """Main function that orchestrates the configuration retrieval, compliance check,
+    and syslog configuration."""
+    
     # Device connection details
     ip = "192.168.56.101"
     username = "cisco"
